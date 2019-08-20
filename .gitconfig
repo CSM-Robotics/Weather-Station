@@ -1,0 +1,11 @@
+[alias]
+	st = status
+	last = log -1 HEAD --oneline
+	# either choose the default log scheme or a custom one I made
+	hist = log -15 --graph --decorate --oneline
+	bhist = log -20 --graph --decorate --pretty=format:"%C(auto,yellow)%h%x20%C(auto,green)%an%x20%x20%C(auto,cyan)%ad%x20%x20%Creset%s%d" --date=local --color=always
+	b =  branch -av
+	stash = stash -u
+[user]
+	email = kyle@johnneil.net
+	name = Kyle Neil
