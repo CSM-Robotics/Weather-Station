@@ -1,3 +1,5 @@
+#include "BME280.h"
+
 /*
 
 packet structure:
@@ -7,7 +9,11 @@ attach battery level to analog pins in order to detect when running out of power
 
 */
 
+BME b;
+
 void setup() {
+  b.startSensor();
+  
 	// set up all devices, some may require burn-in time to function properly
 		// if device requires burn-in, don't block.
 		// sleep until data is ready.
