@@ -8,9 +8,14 @@ bool BME::startSensor() {
 
 bool BME::readSensor(float* readings) {
   readings[tempC] = sensor.readTempC();
-  readings[preskPa] = sensor.readFloatPressure();
-  readings[altm] = sensor.readFloatAltitudeMeters();
-  readings[humpc] = sensor.readFloatHumidity();
+  readings[presskPa] = sensor.readFloatPressure();
+  readings[humPer] = sensor.readFloatHumidity();
 
   return true; // no error checking here yet
+}
+
+bool BME::readAlt(float* result) { // seperate because altitude doesn't really change once the device is set up
+    *result = sensor.readFloatAltitudeMeters();
+
+    return true;
 }
