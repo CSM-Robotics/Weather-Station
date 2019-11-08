@@ -7,11 +7,13 @@ Here is the [link](https://docs.google.com/spreadsheets/d/1q3k0UVijBZFMGUKlG-Q57
 
 ## Arduino information
 The Arduino system uses multiple sensors to collect data, all of which are listed below.  For more detailed information check the Sparkfun "Getting Started" guides for the respective sensors.
-- The [BME280](https://www.sparkfun.com/products/13676) sensor is a combination pressure/temperature/humidity sensor.
-- The [CCS811](https://www.sparkfun.com/products/14193) sensor measures air quality levels.
-- The [Pocket Geiger Sensor](https://www.sparkfun.com/products/14209) measures beta and gamma radiation!
+- The [BME280](https://www.sparkfun.com/products/13676) sensor is a combination pressure/temperature/humidity sensor. (3.3v **only**!!)
+- The [CCS811](https://www.sparkfun.com/products/14193) sensor measures air quality levels. (3.3v **only**!!)
+- The [Pocket Geiger Sensor](https://www.sparkfun.com/products/14209) measures beta and gamma radiation! (3.3v /  5v compatible)
 
-Additionally, the Arduino itself isn't just an Uno derivative.  It's actually a [Sparkfun Pro RF](https://www.sparkfun.com/products/14916), which has a couple more features.
+The CCS811 and BME280 sensors should be connected by I2C to the Pro RF.
+
+Additionally, the Arduino itself isn't just an Uno derivative.  It's actually a [Sparkfun Pro RF](https://www.sparkfun.com/products/14916), which is **only** 3.3v compatible and has a couple more features.
 The weather station also has a [Sunny Buddy](https://www.sparkfun.com/products/12885) for managing the solar panel and LiPo battery.
 
 ## Raspberry Pi information
