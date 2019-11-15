@@ -10,12 +10,13 @@ bool BME::readSensor(float* readings) - read all four of the internal sensors.  
 */
 
 #include <SparkFunBME280.h>
+#include <Wire.h>
 #pragma once
 
 enum sensorValues {
   tempC = 0,
-  presskPa,
-  humPer,
+  presskPa = 1,
+  humPer = 2,
 };
 
 class BME {

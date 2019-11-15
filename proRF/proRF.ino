@@ -6,29 +6,28 @@
 // radio
 #include "LoRa.h"
 
-BME b;
+RH_RF95 rf95(12,6);
 
-packet inProgress;
-
-const int id = 1;
+BME atmosphere;
 
 void setup() {
-  b.startSensor();
+  SerialUSB.begin(9600);
+  while(!SerialUSB); // wait for serial lib to start up...
 
-  inProgress.nodeID = id;
-	// set up all devices, some may require burn-in time to function properly
-		// if device requires burn-in, don't block.
-		// sleep until data is ready.
+  SerialUSB.println("Hello!");
+
+  atmosphere.startSensor(); // TODO: find out what sensors map to what pins
 }
 
 void loop() {
-  float tempResults[3];
-  b.readSensor(tempResults);
-
-  inProgress.tempC = tempResults[tempC];
-  inProgress.presskPa = tempResults[presskPa];
-  inProgress.humPer = tempResults[humPer];
-
+  // sleep for 30 sec.
+  float atmosphereReadings[3];
+  atmosphere.readSensor(atmosphereReadings);
   
-	// send everything
+  SerialUSB.println("Temp in C: ");
+  SerialUSB.println(atmosphereReadings[0]);
+
+  delay(2000);
+  // send the stuff places over LoRa
+  
 }

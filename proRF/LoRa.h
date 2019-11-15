@@ -13,7 +13,10 @@ struct packet {
 };
 
 class LoRa {
-  bool startRadio();
+public:
+  LoRa();
   bool sendPacket(const packet* p);
   bool recvPacket(const packet* p); // not sure if this is needed
+private:
+  RH_RF95 radio;
 };
