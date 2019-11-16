@@ -8,7 +8,8 @@
 
 RH_RF95 rf95(12,6);
 
-BME atmosphere;
+BME atmosphere(0x77);
+CCS airquality(0x5B);
 
 void setup() {
   SerialUSB.begin(9600);
@@ -21,11 +22,13 @@ void setup() {
 
 void loop() {
   // sleep for 30 sec.
-  float atmosphereReadings[3];
-  atmosphere.readSensor(atmosphereReadings);
+  float allReadings[5];
   
+  atmosphere.readSensor(allReadings);
+  airquality.readSensor(allReadings + 3);
+
   SerialUSB.println("Temp in C: ");
-  SerialUSB.println(atmosphereReadings[0]);
+  SerialUSB.println(allReadings[tempC]);
 
   delay(2000);
   // send the stuff places over LoRa

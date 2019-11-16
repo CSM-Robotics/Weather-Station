@@ -1,4 +1,5 @@
 #include <RH_RF95.h>
+#pragma once
 
 // [ temp float ] [ hum float ] [ pressure float ] [ tVOC int ] [ CO2 int ] [ Geiger int ] [ battery level float ]
 struct packet {

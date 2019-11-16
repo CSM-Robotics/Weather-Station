@@ -13,7 +13,7 @@ bool BME::readSensor(float* readings) - read all four of the internal sensors.  
 #include <Wire.h>
 #pragma once
 
-enum sensorValues {
+enum BMEsensorValues {
   tempC = 0,
   presskPa = 1,
   humPer = 2,
@@ -21,7 +21,8 @@ enum sensorValues {
 
 class BME {
   public:
-    bool startSensor();
+    BME(unsigned char addr);
+	bool startSensor();
     bool readSensor(float* readings);
     bool readAlt(float* result);
   private:

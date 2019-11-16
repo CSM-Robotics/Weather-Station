@@ -1,9 +1,12 @@
 #include "BME280.h"
 
+BME::BME(unsigned char addr) : sensor() {
+	sensor.settings.commInterface = I2C_MODE;
+	sensor.settings.I2CAddress = addr;
+}
+
 bool BME::startSensor() {
   delay(10); // wait a little bit for the sensor to turn on
-  sensor.settings.commInterface = I2C_MODE;
-  sensor.settings.I2CAddress = 0x77; // default
   
   sensor.settings.runMode = 3; // Normal mode??
   sensor.settings.tStandby = 0;
