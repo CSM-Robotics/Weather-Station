@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #pragma once
 
 class Geiger {
@@ -5,6 +6,6 @@ class Geiger {
     bool startSensor();
 	bool readSensor(float* readings);
   private:
-    // no Sparkfun lib for this, come back later
-
+    int cpm;
+    int noise;
 };

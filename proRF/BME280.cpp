@@ -15,22 +15,22 @@ bool BME::startSensor() {
   sensor.settings.tempOverSample = 1;
   sensor.settings.pressOverSample = 1;
   sensor.settings.humidOverSample = 1;
-  
+
+  delay(10);
   uint8_t start = sensor.begin();
-  delay(2);
-  return start == 0x60; // if the sensor does not return 0x60 then something went wrong
+  return start != 0x60; // if the sensor does not return 0x60 then something went wrong
 }
 
-bool BME::readSensor(float* readings) {
-  readings[tempC] = sensor.readTempC();
-  readings[presskPa] = sensor.readFloatPressure();
-  readings[humPer] = sensor.readFloatHumidity();
+bool BME::readSensor(float* temp, float* pres, float* hum) {
+  *temp = sensor.readTempC();
+  *pres = sensor.readFloatPressure();
+  *hum = sensor.readFloatHumidity();
 
-  return true; // no error checking here yet
+  return false; // no error checking here yet
 }
 
 bool BME::readAlt(float* result) { // seperate because altitude doesn't really change once the device is set up
-  *result = sensor.readFloatAltitudeMeters();
+  *result = sensor.readFloatAltitudeFeet();
 
-  return true;
+  return false;
 }

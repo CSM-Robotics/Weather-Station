@@ -10,6 +10,7 @@ bool BME::readSensor(float* readings) - read all four of the internal sensors.  
 */
 
 #include <SparkFunBME280.h>
+#include <Arduino.h>
 #include <Wire.h>
 #pragma once
 
@@ -22,8 +23,8 @@ enum BMEsensorValues {
 class BME {
   public:
     BME(unsigned char addr);
-	bool startSensor();
-    bool readSensor(float* readings);
+	  bool startSensor();
+    bool readSensor(float* temp, float* pres, float* hum);
     bool readAlt(float* result);
   private:
     BME280 sensor;

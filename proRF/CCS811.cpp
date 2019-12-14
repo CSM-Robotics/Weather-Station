@@ -5,14 +5,18 @@ CCS::CCS(unsigned char addr) : sensor(addr) {
 }
 
 bool CCS::startSensor() {
-  return sensor.begin() != 0;
+  return sensor.begin() != CCS811Core::SENSOR_SUCCESS;
 }
 
-bool CCS::readSensor(float* readings) {
-  if (sensor.dataAvailable()) {
-    sensor.readAlgorithmResults();
-	readings[CO2count] = sensor.getCO2();
-	readings[TVOCcount] = sensor.getTVOC();
-  }
-  return sensor.checkForStatusError() == true;
+bool CCS::readSensor(float* CO2, float* tVOC) {
+  while (!sensor.dataAvailable()); // block until data is available
+  sensor.readAlgorithmResults();
+  *CO2 = sensor.getCO2();
+  *tVOC = sensor.getTVOC();
+  return sensor.checkForStatusError();
+}
+
+bool CCS::setInfo(float hum, float tempC) {
+  sensor.setEnvironmentalData(hum, tempC);
+  return sensor.checkForStatusError();
 }
