@@ -16,16 +16,16 @@ RH_RF95 rf95(12,6);
 
 BME atmosphere(0x77);
 CCS airquality(0x5B);
+Geiger rad;
 
 struct weatherpacket {
-  uint8_t nodeID;
+  uint32_t nodeID;
   float tempC;
   float pressPa;
   float hum;
   float CO2ppm;
   float tVOCppb;
-  uint16_t cpm;
-  uint32_t checksum;
+  float cpm;
 };
 
 weatherpacket pack;
@@ -50,6 +50,15 @@ void setup() {
   } else {
     SerialUSB.println("done.");
   }
+
+  SerialUSB.print("Initializing Geiger sensor... ");
+  bool raderr = rad.startSensor();
+  if (raderr) {
+    SerialUSB.println("Error initializing the radiation sensor!");
+  } else {
+    SerialUSB.println("done.");
+  }
+  
 
   SerialUSB.print("Initializing RFM95W... ");
   if (!rf95.init()) {
@@ -84,6 +93,11 @@ void loop() {
     SerialUSB.println("Error reading the air quality sensor!");
   }
 
+  //errread = rad.readSensor(&pack.cpm);
+  //if (errread) {
+    //SerialUSB.println("Error reading the geiger sensor!");
+  //}
+
   bool errset = airquality.setInfo(pack.hum, pack.tempC);
   if (errset) {
     SerialUSB.println("Error setting air quality data!");
@@ -100,7 +114,9 @@ void loop() {
   SerialUSB.print(pack.CO2ppm);
   SerialUSB.print(" ppm CO2, ");
   SerialUSB.print(pack.tVOCppb);
-  SerialUSB.println(" ppb tVOC");
+  SerialUSB.print(" ppb tVOC, ");
+  SerialUSB.print(pack.cpm);
+  SerialUSB.println(" cpm");
   
   rf95.send(reinterpret_cast<uint8_t*>(&pack), sizeof(pack));
   rf95.waitPacketSent();
