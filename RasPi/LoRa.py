@@ -13,32 +13,36 @@ from digitalio import DigitalInOut, Direction, Pull
 import sys
 import signal
 
-packetlen = 28
+packetlen = 32
+packettime = 0.5 # time in between packets in minutes
 
-dropcount = 0
-recvcount = 0
+recvcount = 0 # packets received over the air
+packetcount = 0 # packets understood
 
 def signal_handler(sig, frame):
-    print("\nsent %d packets, %d of which were dropped." % (recvcount, dropcount)) 
+    global recvcount
+    global packetcount
+
+    print("\ngot %d packets, %d of which were understood." % (recvcount, packetcount)) 
     sys.exit(0)
 
 def parsepacket(pack):
+    global recvcount
+    recvcount += 1
+
     # error checking to make sure that the packet is well-formed
     if len(pack) != packetlen:
         print("Packet is not of proper length, dropping it.")
         
-        global dropcount
-        dropcount += 1
-        
         return None
     
-    dataformat = namedtuple('dataformat', 'NodeID tempC pressPa hum CO2 tVOC cpm')
+    dataformat = namedtuple('dataformat', 'NodeID tempC pressPa hum CO2 tVOC count packetcount')
     
-    formatteddata = dataformat._make(struct.unpack('<Iffffff', pack))
+    formatteddata = dataformat._make(struct.unpack('<IfffffII', pack))
     
-    global recvcount # this is the weirdest thing...
-    recvcount += 1
-
+    global packetcount
+    packetcount += 1
+    
     return formatteddata
 
 if __name__ == '__main__':
@@ -58,7 +62,9 @@ if __name__ == '__main__':
                 data = parsepacket(packet)
                 
                 if data is not None:
-                    print("%4.2f C, %4.2f Pa, %4.2f percent hum, %4.2f ppm CO2, %4.2f ppb tVOC, %4.2f cpm" % (data.tempC, data.pressPa, data.hum, data.CO2, data.tVOC, data.cpm))
+                    cpm = data.count / packettime
+                    
+                    print("%4.2f C, %4.2f Pa, %4.2f percent hum, %4.2f ppm CO2, %4.2f ppb tVOC, %4.2f cpm" % (data.tempC, data.pressPa, data.hum, data.CO2, data.tVOC, cpm))
     except RuntimeError as error:
         print('RFM9X initialization error: ', error)
 
