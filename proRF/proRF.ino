@@ -1,16 +1,14 @@
 /* TODO: 
- *  implement checksums
  *  implement some sort of debug protocol
- *  check if RFM95W supports any kind of encryption
- *  get device to sleep in between readings (sleep for 1min, wake up, read instruments, send it, go back to sleep.
- *    only the geiger counter needs active monitoring (I think) and other sensors will continue to collect information?
+ *  get device to sleep in between readings (sleep for 1min, wake up, read instruments, send it, go back to sleep.), get radio to sleep.
+ *  get the measurement clear to be independant of the CPU as well? could be made into an event thing but would take more work
  */
 
 #include"BME280.h"
 #include "CCS811.h"
 #include "Geiger.h"
 
-#include <RH_RF95.h>
+#include <RH_RF95.h> // radiohead lib for LoRa communications
 
 RH_RF95 rf95(12,6);
 
@@ -18,17 +16,20 @@ BME atmosphere(0x77);
 CCS airquality(0x5B);
 Geiger rad;
 
+uint32_t packetcounter = 0;
+
 struct weatherpacket {
-  uint32_t nodeID;
+  const uint32_t nodeID;
   float tempC;
   float pressPa;
   float hum;
   float CO2ppm;
   float tVOCppb;
-  float cpm;
+  uint32_t count;
+  uint32_t packetnum;
 };
 
-weatherpacket pack;
+weatherpacket pack = { 1 };
 
 void setup() {
   SerialUSB.begin(9600);
@@ -59,7 +60,6 @@ void setup() {
     SerialUSB.println("done.");
   }
   
-
   SerialUSB.print("Initializing RFM95W... ");
   if (!rf95.init()) {
     SerialUSB.println("Error initializing the radio!");
@@ -67,8 +67,9 @@ void setup() {
     SerialUSB.println("done.");
   }
   rf95.setFrequency(915.0);
-
-  pack.nodeID = 1;
+  
+  rf95.setTxPower(23); // set max TX power
+  
 }
 
 void loop() {
@@ -93,16 +94,21 @@ void loop() {
     SerialUSB.println("Error reading the air quality sensor!");
   }
 
-  //errread = rad.readSensor(&pack.cpm);
-  //if (errread) {
-    //SerialUSB.println("Error reading the geiger sensor!");
-  //}
-
   bool errset = airquality.setInfo(pack.hum, pack.tempC);
   if (errset) {
     SerialUSB.println("Error setting air quality data!");
   }
+  
+  errread = rad.readSensor(&pack.count);
+  if (errread) {
+    SerialUSB.println("Error reading the geiger sensor!");
+  }
 
+  pack.packetnum = packetcounter++;
+
+  SerialUSB.print("packet ");
+  SerialUSB.print(pack.packetnum);
+  SerialUSB.print(":   ");
   SerialUSB.print(pack.tempC);
   SerialUSB.print(" C, ");
   SerialUSB.print(pack.pressPa);
@@ -115,8 +121,8 @@ void loop() {
   SerialUSB.print(" ppm CO2, ");
   SerialUSB.print(pack.tVOCppb);
   SerialUSB.print(" ppb tVOC, ");
-  SerialUSB.print(pack.cpm);
-  SerialUSB.println(" cpm");
+  SerialUSB.print(pack.count);
+  SerialUSB.println(" counts");
   
   rf95.send(reinterpret_cast<uint8_t*>(&pack), sizeof(pack));
   rf95.waitPacketSent();
