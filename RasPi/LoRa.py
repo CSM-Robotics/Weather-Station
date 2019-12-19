@@ -16,45 +16,33 @@ import time
 packetlen = 32
 packettime = 0.5 # time in between packets in minutes
 
-recvcount = 0 # packets received over the air
-packetcount = 0 # packets understood
+packettotal = 0 # packets understood
 
 center_freq = 915.0
 
 def signal_handler(sig, frame):
     """traps cntl-c to print out the number of received and understood packets"""
-    global recvcount
-    global packetcount
-
-    print("\ngot %d packets, %d of which were understood." % (recvcount, packetcount)) 
+    
+    global packettotal
+    print("\ngot %d packets." % (packettotal)) 
     sys.exit(0)
 
 def parsepacket(pack):
     """takes in a packet from the LoRa hardware and parses it, returning a formatted tuple with a variety of parameters"""
-    
-    global recvcount
-    recvcount += 1
 
     # error checking to make sure that the packet is well-formed
     if len(pack) != packetlen:
-        print("Packet is not of proper length, dropping it.")
+        print("WARNING - packet is not of proper length, dropping it.")
         
         return None
     
     dataformat = namedtuple('dataformat', 'NodeID tempC pressPa hum CO2 tVOC count packetcount')
-    
     formatteddata = dataformat._make(struct.unpack('<IfffffII', pack))
-    
-    if formatteddata.packetcount != recvcount: # assuming that recvcount <= formatteddata.packetcount (nobody else is sending LoRa packets)
-        print("WARNING: %d packets dropped in flight or CRC failed." % (formatteddata.packetcount - recvcount))
-        recvcount = formatteddata.packetcount
-
-    global packetcount
-    packetcount += 1
     
     return formatteddata
 
 if __name__ == '__main__':
+
     signal.signal(signal.SIGINT, signal_handler)
 
     CS = DigitalInOut(board.CE1)
@@ -72,10 +60,12 @@ if __name__ == '__main__':
             packet = rfm9x.receive()
             if packet is not None:
                 data = parsepacket(packet)
-            
                 if data is not None:
-                    cpm = data.count / packettime    
-                    print("packet %d:    %4.2f C, %4.2f Pa, %4.2f percent hum, %4.2f ppm CO2, %4.2f ppb tVOC, %4.2f cpm" % (data.packetcount, data.tempC, data.pressPa, data.hum, data.CO2, data.tVOC, cpm))
+                    cpm = data.count / packettime
+                    print("host packet %d (client packet %d):    %4.2f C, %4.2f Pa, %4.2f percent hum, %4.2f ppm CO2, %4.2f ppb tVOC, %4.2f cpm" % (packettotal, data.packetcount, data.tempC, data.pressPa, data.hum, data.CO2, data.tVOC, cpm))
+                    packettotal += 1
+                else:
+                    print("packet is damaged.")
     except RuntimeError as error:
         print('RFM9X initialization error: ', error)
 
