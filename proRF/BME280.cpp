@@ -12,7 +12,7 @@ bool BME::startSensor() {
   sensor.settings.tStandby = 0;
   sensor.settings.filter = 0;
  
-  sensor.settings.tempOverSample = 1;
+  sensor.settings.tempOverSample = 1; // don't oversample anything
   sensor.settings.pressOverSample = 1;
   sensor.settings.humidOverSample = 1;
 
@@ -29,7 +29,7 @@ bool BME::readSensor(float* temp, float* pres, float* hum) {
   return false; // no error checking here yet
 }
 
-bool BME::readAlt(float* result) { // seperate because altitude doesn't really change once the device is set up
+bool BME::readAlt(float* result) {
   *result = sensor.readFloatAltitudeFeet();
 
   return false;

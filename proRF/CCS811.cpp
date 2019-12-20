@@ -1,8 +1,6 @@
 #include "CCS811.h"
 
-CCS::CCS(unsigned char addr) : sensor(addr) {
-
-}
+CCS::CCS(unsigned char addr) : sensor(addr) { }
 
 bool CCS::startSensor() {
   return sensor.begin() != CCS811Core::SENSOR_SUCCESS;

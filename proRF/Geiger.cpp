@@ -1,5 +1,26 @@
 #include "Geiger.h"
 
+/*
+
+This code isn't readable. I didn't find out that macros for all of the bit-twiddling I did exist in the Arduino header until I was most of the way through.
+
+So I'll try and explain all the things the code is doing, and if someone wants to strip out all of my bad code and replace it with good code, go ahead. My code should work, as far as I can tell.
+
+The code basically configures the microcontroller to read inputs from the geiger sensor and send them to an internal 16-bit counter without any interruption with the CPU at all. The CPU can then read the counter values at periodic intervals and send that value to the Raspi.
+
+The first thing to happen is a particle strikes the radiation sensor.  The sensor will then drive the signal pin low for ~100 us.
+(if noise is detected, the measurement is thrown away, as an interrupt will be triggererd that will clear out the counter.)
+
+The signal pin will drive Pro RF pin 2 low, which triggers the External Interrupt Controller to generate an interrupt that in addition to calling isr() sends an "event" to the event system (EVSYS.)
+
+The event system will then route the pulse to timer/counter 3 (TC3), which will increment.
+
+The application code will then read out the counter values when appropriate.
+
+TODO: explain clock generators and APBC stuff, as well as why things might crash now.
+
+*/
+
 volatile uint16_t* tc3_ctla = (uint16_t*)(0x42002C00 + 0);
 volatile uint16_t* tc3_readreq = (uint16_t*)(0x42002C00 + 0x2);
 volatile uint8_t* tc3_ctlb = (uint8_t*)(0x42002C00 + 0x05);
@@ -29,7 +50,7 @@ volatile uint32_t* eicconfig = (uint32_t*)(0x40001800 + 0x18);
 
 void isr() { } // dummy isr, makes things work...
 
-void resetcounter() { // noise on the pin, so ignore previous measurements? - need to figure out how this works.
+void resetcounter() { // noise on the pin, so ignore previous measurements.
   *tc3_count = 0;
   SerialUSB.println("noise detected - clearing counts.");
 }
@@ -63,6 +84,13 @@ bool Geiger::startSensor() {
   
   *tc3_ctla |= (((uint16_t)1) << 1); // enable tc3 peripheral
   while(*tc3_status >> 7 == 1);
+
+  // enable running in standby on TC3
+  // set GCLKREQ to turn on only if there is an event to keep track of
+  // reduce the clock from 48MHz to 32kHz or something
+
+  // seems like EVSYS and EIC stay on while CPU turned off...?
+  // figure out exactly what Arduino Low Power is doing and possibly replace it if it's interfering with our stuff.
   
   if (*tc3_status != 0) {
     SerialUSB.print("counter problematic, status register: ");
@@ -88,7 +116,7 @@ bool Geiger::startSensor() {
 }
 
 bool Geiger::readSensor(uint32_t* count) {
-  *count = (uint32_t)(*tc3_count);
+  *count = (uint32_t)(*tc3_count); // TODO: tc3_count is actually a 16-bit number.  convert the packet header and stuff to reflect that.
   *tc3_count = 0; // clear counter
   
   return false;

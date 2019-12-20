@@ -1,11 +1,17 @@
 /*
 
-SparkFun BME280 Sensor reading code
+BME280 wrapper code - encloses all the stuff required to inteface with the BME280 sensor breakout from Sparkfun.
+(https://www.sparkfun.com/products/13676)
 
-bool BME::startSensor() - starts up the sensor, and returns a boolean indicating whether setup was successful. (false result is failure)
+method descriptions:
 
-bool BME::readSensor(float* readings) - read all four of the internal sensors.  This method is an argument of an array of >= 3 elements. The order in which sensor elements are written:
-[ temp in C ] [ pressure in kPa ] [ altitude in m ] [ humidity in % ]
+BME(unsigned char addr) - configures the BME sensor over the I2C bus with the address addr.
+
+startSensor() - initializes the BME sensor. returns true if an error occurred.
+
+readSensor() - reads the temperature in C, pressure in pascals, and relative humidity in %. also returns true if an error occurred.
+
+readAlt() - reads the altitude from the sensor. decoupled from everything else because we don't need to read the altitude that often, as it shouldn't change.
 
 */
 
@@ -14,16 +20,10 @@ bool BME::readSensor(float* readings) - read all four of the internal sensors.  
 #include <Wire.h>
 #pragma once
 
-enum BMEsensorValues {
-  tempC = 0,
-  presskPa = 1,
-  humPer = 2,
-};
-
 class BME {
   public:
     BME(unsigned char addr);
-	  bool startSensor();
+	bool startSensor();
     bool readSensor(float* temp, float* pres, float* hum);
     bool readAlt(float* result);
   private:

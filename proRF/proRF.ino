@@ -1,8 +1,13 @@
-/* TODO: 
- *  implement some sort of debug protocol
- *  get device to sleep in between readings (sleep for 1min, wake up, read instruments, send it, go back to sleep.), get radio to sleep.
- *  get the measurement clear to be independant of the CPU as well? could be made into an event thing but would take more work
- */
+/*
+
+This is the main sketch for the Arduino side of the Weather Station project. It calls sensor libraries in order to get sensor readings, and sends them over LoRa to a Raspberry Pi.
+
+TODO:
+	implement some sort of debug protocol
+	get device to sleep in between readings (sleep for 1min, wake up, read instruments, send it, go back to sleep.), get radio to sleep.
+	get the measurement clear to be independant of the CPU as well? could be made into an event thing but would take more work
+
+*/
 
 #include"BME280.h"
 #include "CCS811.h"
@@ -10,10 +15,15 @@
 
 #include <RH_RF95.h> // radiohead lib for LoRa communications
 
+#include <ArduinoLowPower.h>
+
+const unsigned char BMEADDR = 0x77;
+const unsigned char CCSADDR = 0x5B;
+
 RH_RF95 rf95(12,6);
 
-BME atmosphere(0x77);
-CCS airquality(0x5B);
+BME atmosphere(BMEADDR);
+CCS airquality(CCSADDR);
 Geiger rad;
 
 uint32_t packetcounter = 0;
@@ -29,7 +39,7 @@ struct weatherpacket {
   uint32_t packetnum;
 };
 
-weatherpacket pack = { 1 };
+weatherpacket pack = { 1 }; // set node ID to be 1 (each node ID is unique)
 
 void setup() {
   SerialUSB.begin(9600);
@@ -88,12 +98,12 @@ void loop() {
   }
 
   // NOTE: the CCS811 sensor requires 20 mins of uptime to generate useful data.
-  // and a 48-hour initial burn-in period.
   errread = airquality.readSensor(&pack.CO2ppm, &pack.tVOCppb);
   if (errread) {
     SerialUSB.println("Error reading the air quality sensor!");
   }
-
+  
+  // use BME data to calibrate the CCS sensor.
   bool errset = airquality.setInfo(pack.hum, pack.tempC);
   if (errset) {
     SerialUSB.println("Error setting air quality data!");
@@ -104,7 +114,7 @@ void loop() {
     SerialUSB.println("Error reading the geiger sensor!");
   }
 
-  pack.packetnum = packetcounter++;
+  pack.packetnum = packetcounter++; // packet counter to help detect dropped packets
 
   SerialUSB.print("packet ");
   SerialUSB.print(pack.packetnum);
@@ -127,5 +137,8 @@ void loop() {
   rf95.send(reinterpret_cast<uint8_t*>(&pack), sizeof(pack));
   rf95.waitPacketSent();
   
-  delay(2000);
+  delay(2 * 1000); // wait 2 seconds - terrible design
+  //LowPower.sleep(30000); // powers down the CPU for a while, this also disables SerialUSB for some reason
+  // note that uploading new sketches is impossible when the core is powered down so you need to press the reset button and upload quickly.
+  // also this breaks the Geiger code rn because I haven't updated it to work in low-power mode.
 }
