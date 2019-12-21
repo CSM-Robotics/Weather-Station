@@ -37,7 +37,10 @@ def parsepacket(pack):
         return None
     
     dataformat = namedtuple('dataformat', 'NodeID tempC pressPa hum CO2 tVOC count packetcount')
-    formatteddata = dataformat._make(struct.unpack('<IfffffII', pack))
+	
+	packetformat = '<IfffffIHxx' # this is the format of a packet written in a format that struct can understand.
+	
+    formatteddata = dataformat._make(struct.unpack(packetformat, pack))
     
     return formatteddata
 
