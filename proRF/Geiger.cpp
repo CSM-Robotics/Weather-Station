@@ -17,7 +17,11 @@ The event system will then route the pulse to timer/counter 3 (TC3), which will 
 
 The application code will then read out the counter values when appropriate.
 
-TODO: explain clock generators and APBC stuff, as well as why things might crash now.
+In startSensor(), clocks are set up to clock the EIC, EVSYS, and TC3, as well as the standard setup stuff for each component.
+
+BIG NOTE: since there's a lot of register twiddling here, it's totally possible that using a library that happens to use the same hardware as this program could screw things up. things in that lib could crash or not work.
+
+TODO: TCENABLE thing has to be on for all ops instead of just async
 
 */
 
@@ -50,7 +54,7 @@ volatile uint32_t* eicconfig = (uint32_t*)(0x40001800 + 0x18);
 
 void isr() { } // dummy isr, makes things work...
 
-void resetcounter() { // noise on the pin, so ignore previous measurements.
+void resetcounter() { // noise on the pin, so ignore previous measurements built up.
   *tc3_count = 0;
   SerialUSB.println("noise detected - clearing counts.");
 }
@@ -60,8 +64,9 @@ bool Geiger::startSensor() {
   *port_pincfg = (uint8_t)0x3; // enable input reading and let the peripheral use the pin
   *port_periphmux = (uint8_t)0x00; // let peripheral A control the pin (EXTINT14)
   
-  *clkgencontrol = (uint32_t)0x10706; // 48MHz clock, enabled, clk gen 6
-  while (*clkstatus >> 7 == 1);
+  *clkgencontrol = (uint32_t)0x10706; // 48MHz clock version if 8MHz doesn't work for some reason
+  //*clkgencontrol = (uint32_t)0x10606; // 8MHz clock, enabled, clk gen 6
+  while (*clkstatus >> 7 == 1); // sync
   *clkcontrol = (uint16_t)0x461B; // enable GCLK6 with above source going to TC3
   *apbcmask |= (((uint32_t)1) << 11); // enable clock for tc3
   
@@ -78,19 +83,12 @@ bool Geiger::startSensor() {
     
   // select 16-bit counter mode
   *tc3_ctlb |= ((uint8_t)1) << 2; // select 1-shot operation
-  while(*tc3_status >> 7 == 1);
+  while(*tc3_status >> 7 == 1); // sync
 
   *tc3_event |= ((uint16_t)1) << 5; // turn on TCEI (the doc says it's only required for async operations, I think it's wrong)
   
   *tc3_ctla |= (((uint16_t)1) << 1); // enable tc3 peripheral
-  while(*tc3_status >> 7 == 1);
-
-  // enable running in standby on TC3
-  // set GCLKREQ to turn on only if there is an event to keep track of
-  // reduce the clock from 48MHz to 32kHz or something
-
-  // seems like EVSYS and EIC stay on while CPU turned off...?
-  // figure out exactly what Arduino Low Power is doing and possibly replace it if it's interfering with our stuff.
+  while(*tc3_status >> 7 == 1); // sync
   
   if (*tc3_status != 0) {
     SerialUSB.print("counter problematic, status register: ");
@@ -99,7 +97,7 @@ bool Geiger::startSensor() {
   }
 
   *tc3_readreq = (uint16_t)0xC010; // request read syncronization with count register, use 0x8010 and ignore this code and update resetcounter isr if you don't want automatic syncronization.
-  while (*tc3_status >> 7 == 1);
+  while (*tc3_status >> 7 == 1); // sync
 
   *evsyscontrol |= (((uint8_t)1) << 4); // generic clocks for channels are always on.
   *evsyschannel = (uint32_t)0x81A0000; // connect EXTint14 to channel 0
@@ -115,8 +113,8 @@ bool Geiger::startSensor() {
   return false;
 }
 
-bool Geiger::readSensor(uint32_t* count) {
-  *count = (uint32_t)(*tc3_count); // TODO: tc3_count is actually a 16-bit number.  convert the packet header and stuff to reflect that.
+bool Geiger::readSensor(uint16_t* count) {
+  *count = *tc3_count;
   *tc3_count = 0; // clear counter
   
   return false;

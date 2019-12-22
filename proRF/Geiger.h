@@ -10,7 +10,7 @@ method description:
 
 startSensor() - initializes the sensor. does not depend on I2C bus for IO, only digital input pins
 
-readSensor(uint32_t* count) - sets count to the number of radioactive particles that have hit the sensor
+readSensor(uint16_t* count) - sets count to the number of radioactive particles that have hit the sensor
 (not sure if gamma counts as particles. whatever.)
 
 */
@@ -21,5 +21,5 @@ readSensor(uint32_t* count) - sets count to the number of radioactive particles 
 class Geiger {
   public:
     bool startSensor();
-	bool readSensor(uint32_t* count);
+	  bool readSensor(uint16_t* count);
 };

@@ -3,11 +3,14 @@
 CCS::CCS(unsigned char addr) : sensor(addr) { }
 
 bool CCS::startSensor() {
+  
   return sensor.begin() != CCS811Core::SENSOR_SUCCESS;
 }
 
 bool CCS::readSensor(float* CO2, float* tVOC) {
-  while (!sensor.dataAvailable()); // block until data is available
+  while (!sensor.dataAvailable()) { // block until data is available
+    //SerialUSB.println("busy waiting.");
+  }
   sensor.readAlgorithmResults();
   *CO2 = sensor.getCO2();
   *tVOC = sensor.getTVOC();

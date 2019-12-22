@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
 
+# RasPi config options needed before this script will run:
+
+# sudo apt-get update && sudo apt-get upgrade
+# sudo pip3 install --upgrade setuptools
+# add the line "dtoverlay=spi1-3cs" to the bottom of /boot/config.txt
+# pip3 install RPI.GPIO
+# pip3 install adafruit-blinka
+# sudo pip3 install adafruit-circuitpython-rfm9x
+
+# TODO write circuit connections
+
 import busio
 import board
 import adafruit_rfm9x
@@ -36,9 +47,9 @@ def parsepacket(pack):
         
         return None
     
-    dataformat = namedtuple('dataformat', 'NodeID tempC pressPa hum CO2 tVOC count packetcount')
+    dataformat = namedtuple('dataformat', 'NodeID tempC pressPa hum CO2 tVOC count packetcount deviceinfo')
 	
-	packetformat = '<IfffffIHxx' # this is the format of a packet written in a format that struct can understand.
+	packetformat = '<IfffffHxxII' # this is the format of a packet written in a format that struct can understand.
 	
     formatteddata = dataformat._make(struct.unpack(packetformat, pack))
     

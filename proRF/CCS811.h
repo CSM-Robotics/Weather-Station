@@ -24,7 +24,7 @@ data comes from the BME280 sensor.
 class CCS {
   public:
     CCS(unsigned char addr);
-	bool startSensor();
+	  bool startSensor();
     bool readSensor(float* CO2, float* tVOC);
     bool setInfo(float hum, float tempC); // get data from a BME280 and use it to calibrate the sensor!
   private:
