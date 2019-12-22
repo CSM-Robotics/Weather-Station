@@ -9,7 +9,14 @@
 # pip3 install adafruit-blinka
 # sudo pip3 install adafruit-circuitpython-rfm9x
 
-# TODO write circuit connections
+# Vin -> 3.3v
+# GND -> GND
+# RFM G0 -> GPIO #5
+# RFM RST -> GPIO #25
+# RFM CLK -> SCK
+# RFM MISO -> MISO
+# RFM MOSI -> MOSI
+# RFM CS -> CE1
 
 import busio
 import board
@@ -24,7 +31,7 @@ import sys
 import signal
 import time
 
-packetlen = 32
+packetlen = 36
 packettime = 0.5 # time in between packets in minutes
 
 packettotal = 0 # packets understood
@@ -66,8 +73,8 @@ if __name__ == '__main__':
     try:
         rfm9x = adafruit_rfm9x.RFM9x(spi, CS, RESET, center_freq) # use 915MHz since we're in America and it isn't legal to broadcast elsewhere I think
         
-        rfm9x.tx_power = 23 # set max TX power
         rfm9x.enable_crc = True # enable checksums to protect data against accidental tampering
+		# a CRC is not an encryption algorithm.
         
         print("configuring radio for %.1f MHz, %d dBm tx power" % (center_freq, rfm9x.tx_power))
         while True:
@@ -82,5 +89,4 @@ if __name__ == '__main__':
                     print("packet is damaged.")
     except RuntimeError as error:
         print('RFM9X initialization error: ', error)
-
 
