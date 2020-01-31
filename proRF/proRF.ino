@@ -1,19 +1,19 @@
 /*
 
 This is the main sketch for the Arduino side of the Weather Station project. It calls sensor libraries in order to get sensor readings, and sends them over LoRa to a Raspberry Pi.
-
-TODO:
-  use sleep instead of idle and reconfigure Geiger.
-    enable running in standby on TC3
-    set GCLKREQ to turn on only if there is an event to keep track of - think about this.  make sure that the time to power up GCLK is short enough to record the radiation pulse (100us)
-    set clock generator, clock, EVSYS, EIC, and TC3 to stay on if in sleep
-    seems like EVSYS and EIC stay on while CPU turned off...?
     
+	TODO: implement some sort of debug protocol - check battery levels and run a self-test
+  TODO: get power consumption down, ideally <10mA
+
+  POWER TODO:
+  use sleep instead of idle and reconfigure Geiger.
+  enable running in standby on TC3
+  set GCLKREQ to turn on only if there is an event to keep track of - think about this.  make sure that the time to power up GCLK is short enough to record the radiation pulse (100us)
+  set clock generator, clock, EVSYS, EIC, and TC3 to stay on if in sleep
+  seems like EVSYS and EIC stay on while CPU turned off...?
   reduce the clock from 8MHz to 32kHz - fails at 32 for some reason
   
-	implement some sort of debug protocol - check battery levels and run a self-test
-    
-	get the measurement clear to be independant of the CPU as well? could be made into an event thing but would take more work
+  NOTE: with an 850mAh battery running the delay() loop, current is about 80mA.  This will exhaust the battery in about 10 hours with no solar recharge.
 */
 
 #include"BME280.h"
@@ -21,8 +21,6 @@ TODO:
 #include "Geiger.h"
 
 #include <RH_RF95.h> // radiohead lib for LoRa communications
-
-#include <ArduinoLowPower.h>
 
 const unsigned char BMEADDR = 0x77;
 const unsigned char CCSADDR = 0x5B;
@@ -50,6 +48,7 @@ struct weatherpacket {
     device info bit 0 is to indicate whether the battery is charging
     (check battery level and solar power output level)
     (check for fault condition)
+    
   */
 };
 
@@ -57,7 +56,7 @@ weatherpacket pack = { 1 }; // set node ID to be 1 (each node ID is unique)
 
 void setup() {
   SerialUSB.begin(9600);
-  while (!SerialUSB);
+  //while (!SerialUSB);
   // don't wait for Serial lib to show up in final product, because this will hang the board if a USB cable isn't plugged in.
   
   SerialUSB.print("Initializing BME280... ");
@@ -151,8 +150,6 @@ void loop() {
   rf95.waitPacketSent();
 
   rf95.sleep(); // turn the radio off for a while
-  delay(2 * 1000);
-  //LowPower.idle(2000); // powers down the CPU for a while - all peripherals are still on.  More power optimization could be done here by using sleep(), but that requires reconfiguring Geiger.
-  // also note that it should be okay to sit in idle for a while since LowPower uses the RTC instead of busy-looping - RTC broken for some reason, probably clocks and stuff
-  // NOTE: the low power lib is broken, not my code's problem and just the low power thing THE FUCK
+  delay(60 * 1000);
+  // NOTE: the default arduino low power lib is broken, probably the fault of RTCZero.
 }

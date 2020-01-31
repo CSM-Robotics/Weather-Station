@@ -2,6 +2,8 @@
 
 /*
 
+signal pin connects to D2, noise pin connects to D3
+
 This code isn't readable. I didn't find out that macros for all of the bit-twiddling I did exist in the Arduino header until I was most of the way through.
 
 So I'll try and explain all the things the code is doing, and if someone wants to strip out all of my bad code and replace it with good code, go ahead. My code should work, as far as I can tell.
@@ -64,8 +66,8 @@ bool Geiger::startSensor() {
   *port_pincfg = (uint8_t)0x3; // enable input reading and let the peripheral use the pin
   *port_periphmux = (uint8_t)0x00; // let peripheral A control the pin (EXTINT14)
   
-  *clkgencontrol = (uint32_t)0x10706; // 48MHz clock version if 8MHz doesn't work for some reason
-  //*clkgencontrol = (uint32_t)0x10606; // 8MHz clock, enabled, clk gen 6
+  *clkgencontrol = (uint32_t)0x10606; // set system clock to 8MHz to save power, enabled, clk gen 6
+  //*clkgencontrol = (uint32_t)0x10706; // (48MHz clock version is here if the 8MHz version doesn't work)
   while (*clkstatus >> 7 == 1); // sync
   *clkcontrol = (uint16_t)0x461B; // enable GCLK6 with above source going to TC3
   *apbcmask |= (((uint32_t)1) << 11); // enable clock for tc3
