@@ -3,21 +3,36 @@
 CCS::CCS(unsigned char addr) : sensor(addr) { }
 
 bool CCS::startSensor() {
-  
-  return sensor.begin() != CCS811Core::SENSOR_SUCCESS;
+  pinMode(wake_pin, OUTPUT);
+  digitalWrite(wake_pin, 0); // start awake
+  delay(1);
+  bool err = sensor.begin() != CCS811Core::SENSOR_SUCCESS;
+  digitalWrite(wake_pin, 1);
+  delay(1);
+  return err;
 }
 
 bool CCS::readSensor(float* CO2, float* tVOC) {
+  digitalWrite(wake_pin, 0);
+  delay(1); // wait for sensor to wake up, should be <1 ms
   while (!sensor.dataAvailable()) { // block until data is available
     //SerialUSB.println("busy waiting.");
   }
   sensor.readAlgorithmResults();
   *CO2 = sensor.getCO2();
   *tVOC = sensor.getTVOC();
-  return sensor.checkForStatusError();
+  bool err = sensor.checkForStatusError(); // can't read status if sensor is powered down, so read now and then go to sleep
+  digitalWrite(wake_pin, 1);
+  delay(1); // wait for sensor to shut down, should be <1 ms
+  return err;
 }
 
 bool CCS::setInfo(float hum, float tempC) {
+  digitalWrite(wake_pin, 0);
+  delay(1);
   sensor.setEnvironmentalData(hum, tempC);
-  return sensor.checkForStatusError();
+  bool err = sensor.checkForStatusError();
+  digitalWrite(wake_pin, 1);
+  delay(1);
+  return err;
 }

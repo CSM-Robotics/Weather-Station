@@ -8,6 +8,7 @@ method descriptions:
 CCS(unsigned char addr) - configures the CCS sensor over the I2C bus with the address addr.
 
 startSensor() - initializes the CCS sensor. returns true if an error occurred.
+note that digital pin 5 controls whether the sensor is awake or asleep, with HIGH being awake.
 
 readSensor() - reads the equivalent CO2 reading in ppm, and the total Volatile Organic Compounds in the air in ppb.
 note that this method blocks until data is available, but that should be fine since we're not doing anything else.
@@ -20,6 +21,8 @@ data comes from the BME280 sensor.
 #include <SparkFunCCS811.h>
 #include <Arduino.h>
 #pragma once
+
+const int wake_pin = 5;
 
 class CCS {
   public:
