@@ -15,12 +15,12 @@ Additionally, the Arduino itself isn't just an Uno derivative.  It's actually a 
 The weather station also has a [Sunny Buddy](https://www.sparkfun.com/products/12885) for managing the solar panel and LiPo battery.
 
 ## Raspberry Pi information
-The [Raspberry Pi Zero W](https://www.sparkfun.com/products/14277) uses an [RFM95W](https://www.adafruit.com/product/3072) in order to recieve data from the Arduino over LoRa.  It will then send data over WiFi to some kind of cloud server.
+The Raspberry Pi 4 uses an [RFM95W](https://www.adafruit.com/product/3072) in order to recieve data from the Arduino over LoRa.  It will then send data over WiFi to some kind of cloud server.
 
 ## Cloud information
-Not a lot yet.
+Not a lot yet...
 
-## Kyle's Rules
+## Code Rules
 - If you have previous C/C++ experience, please don't write bad code and ask me to look at it.
 - If you don't have previous C/C++ experience, feel free to ask questions about what the above phrase means.
 - If you want to add code to this repository, you must have a way to prove to me it works before I'll look at it.  (Not asking for bug-free code, but please run it >1 time(s))
