@@ -26,11 +26,11 @@ bool BME::readSensor(float* temp, float* pres, float* hum) {
   *pres = sensor.readFloatPressure();
   *hum = sensor.readFloatHumidity();
 
-  return false; // no error checking here yet
+  return false; // the BME sensor lib doesn't have any way to determine if an error occurred.
 }
 
 bool BME::readAlt(float* result) {
   *result = sensor.readFloatAltitudeFeet();
 
-  return false;
+  return false; // the BME sensor lib doesn't have any way to determine if an error occurred.
 }

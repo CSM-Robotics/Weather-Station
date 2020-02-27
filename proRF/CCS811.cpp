@@ -36,3 +36,19 @@ bool CCS::setInfo(float hum, float tempC) {
   delay(1);
   return err;
 }
+
+// adjusted from Sparkfun example code
+uint8_t CCS::getError() {  
+  digitalWrite(wake_pin, 0);
+  delay(1);
+  uint8_t bits = sensor.getErrorRegister();
+  if (bits == 0xFF) { // can't communicate with the CCS sensor at all
+    bits = 0;
+    bitSet(bits, 6);
+    return bits;
+  }
+  bitClear(bits, 7); // there are only seven actual bits to set, so make sure the highest one is always cleared.
+  digitalWrite(wake_pin, 1);
+  delay(1);
+  return bits;
+}

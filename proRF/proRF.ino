@@ -1,22 +1,11 @@
 /*
 
 This is the main sketch for the Arduino side of the Weather Station project. It calls sensor libraries in order to get sensor readings, and sends them over LoRa to a Raspberry Pi.
-    
-	TODO: implement some sort of debug protocol - check battery levels and run a self-test
-  TODO: get power consumption down, ideally <10mA
 
   POWER TODO:
-  use sleep instead of idle and reconfigure Geiger.
-  enable running in standby on TC3
-  set GCLKREQ to turn on only if there is an event to keep track of - think about this.  make sure that the time to power up GCLK is short enough to record the radiation pulse (100us)
-  set clock generator, clock, EVSYS, EIC, and TC3 to stay on if in sleep
-  seems like EVSYS and EIC stay on while CPU turned off...?
-  reduce the clock from 8MHz to 32kHz - fails at 32 for some reason
-
-  reduce TX power if possible
+    reduce TX power if possible
+    reduce idle power
   
-  NOTE: with an 850mAh battery running the delay() loop, current is about 80mA.  This will exhaust the battery in about 10 hours with no solar recharge.
-
   Maintenance:
     The onboard LED will blink repeatedly if hardware fails to initialize properly.
     One blink means the BME sensor is problematic, two blinks is the CCS sensor, and three blinks is the radio module.
@@ -28,6 +17,8 @@ This is the main sketch for the Arduino side of the Weather Station project. It 
 
 #include <RH_RF95.h> // radiohead lib for LoRa communications
 
+const unsigned int packet_delay = 2; // delay between packets in seconds
+
 const unsigned char BMEADDR = 0x77;
 const unsigned char CCSADDR = 0x5B;
 
@@ -35,18 +26,24 @@ RH_RF95 rf95(12,6);
 
 BME atmosphere(BMEADDR);
 CCS airquality(CCSADDR);
-Geiger rad; // geiger sensor is not connected over I2C so no address required
+Geiger rad; // geiger sensor is not connected over I2C, so no address is required
 
 uint32_t packetcounter = 0;
 
 enum {
-  BME_ERROR_BIT = 0,
-  CCS_ERROR_BIT,
-  GEIGER_ERROR_BIT, // not really implemented, hard to tell if something actually went wrong with the sensor
-  RADIO_ERROR_BIT, // not implemented
-  BATTERY_ERROR_BIT, // not implemented
-  SOLAR_PANEL_ERROR_BIT, // not implemented
-  CHARGING_STATUS_ERROR_BIT7 // not implemented
+  //BME_ERROR_BIT = 0, // not implemented - board has no way to detect measurement errors
+  CCS_ERROR_MESSAGE_INVALID, // problem on the arduino side - sending invalid i2c commands
+  CCS_ERROR_READ_REGISTER_INVALID, // problem on the arduino side - sending invalid i2c commands
+  CCS_ERROR_MEASUREMENT_INVALID, // problem on the arduino side - sending invalid i2c commands
+  CCS_ERROR_MAX_RESISTANCE, // either the heater isn't operating, the environment is "unusual", or the sensor is damaged.
+  CCS_ERROR_HEATER_FAULT, // likely a PCB issue
+  CCS_ERROR_HEATER_SUPPLY, // also likely a PCB issue
+  CCS_ERROR_COMMUNICATION,
+  //GEIGER_ERROR_BIT, // not implemented - board has no way to detect measurement errors
+  RADIO_ERROR_BIT, // not implemented yet
+  BATTERY_ERROR_BIT, // not implemented yet
+  SOLAR_PANEL_ERROR_BIT, // not implemented yet
+  CHARGING_STATUS_ERROR_BIT // not implemented yet
 };
 
 struct weatherpacket { // device info is to tell the RasPi about the health of the device (1 if error, 0 if no error)
@@ -65,7 +62,7 @@ weatherpacket pack = { 1 }; // set node ID to be 1 (each node ID is unique)
 
 void setup() {
   SerialUSB.begin(9600);
-  //while (!SerialUSB);
+  while (!SerialUSB);
   // don't wait for Serial lib to show up in final product, because this will hang the board if a USB cable isn't plugged in.
 
   pinMode(LED_BUILTIN, OUTPUT);
@@ -137,39 +134,36 @@ void setup() {
 }
 
 void loop() {
-
+  
   bool errread;
   
   errread = atmosphere.readSensor(&pack.tempC, &pack.pressPa, &pack.hum);
   if (errread) {
-    bitSet(pack.deviceinfo, BME_ERROR_BIT);
     SerialUSB.println("Error reading the atmospheric sensor!");
   }
 
   float alt;
   errread = atmosphere.readAlt(&alt);
   if (errread) {
-    bitSet(pack.deviceinfo, CCS_ERROR_BIT);
     SerialUSB.println("Error reading the atmospheric sensor!");
   }
 
   // NOTE: the CCS811 sensor requires 20 mins of uptime to generate useful data.
   errread = airquality.readSensor(&pack.CO2ppm, &pack.tVOCppb);
   if (errread) {
-    bitSet(pack.deviceinfo, CCS_ERROR_BIT);
+    pack.deviceinfo |= airquality.getError();
     SerialUSB.println("Error reading the air quality sensor!");
   }
   
   // use BME data to calibrate the CCS sensor.
   bool errset = airquality.setInfo(pack.hum, pack.tempC);
   if (errset) {
-    bitSet(pack.deviceinfo, CCS_ERROR_BIT);
+    pack.deviceinfo |= airquality.getError();
     SerialUSB.println("Error setting air quality data!");
   }
   
   errread = rad.readSensor(&pack.count);
   if (errread) {
-    bitSet(pack.deviceinfo, GEIGER_ERROR_BIT);
     SerialUSB.println("Error reading the geiger sensor!");
   }
 
@@ -192,14 +186,14 @@ void loop() {
   SerialUSB.print(" ppb tVOC, ");
   SerialUSB.print(pack.count);
   SerialUSB.print(" counts, error bitfield: ");
-  SerialUSB.print(BIN, pack.deviceinfo);
+  SerialUSB.print(pack.deviceinfo, BIN);
   SerialUSB.println();
   
   rf95.send(reinterpret_cast<uint8_t*>(&pack), sizeof(pack));
   rf95.waitPacketSent();
 
   rf95.sleep(); // turn the radio off for a while
-  delay(2 * 1000);
+  delay(packet_delay * 1000);
   pack.deviceinfo = 0; // clear errors picked up for this packet
   // NOTE: the default arduino low power lib is broken, probably the fault of RTCZero?
 }

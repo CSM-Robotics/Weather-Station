@@ -30,6 +30,7 @@ class CCS {
 	  bool startSensor();
     bool readSensor(float* CO2, float* tVOC);
     bool setInfo(float hum, float tempC); // get data from a BME280 and use it to calibrate the sensor!
+    uint8_t getError();
   private:
     CCS811 sensor;
 };
