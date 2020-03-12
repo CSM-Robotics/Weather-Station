@@ -68,13 +68,13 @@ if __name__ == '__main__':
 
     CS = DigitalInOut(board.CE1)
     RESET = DigitalInOut(board.D25)
-    spi = busio.SPI(board.SCK_1, MOSI=board.MOSI_1, MISO=board.MISO_1) # using the second SPI bus, so you might need to add the line "dtoverlay=spi1-3cs" to /boot/config.txt
+    spi = busio.SPI(board.SCK_1, MOSI=board.MOSI_1, MISO=board.MISO_1) # using the second SPI bus, follow /boot/config.txt instructions above
     
     try:
-        rfm9x = adafruit_rfm9x.RFM9x(spi, CS, RESET, center_freq) # use 915MHz since we're in America and it isn't legal to broadcast elsewhere I think
+        rfm9x = adafruit_rfm9x.RFM9x(spi, CS, RESET, center_freq) # use 915MHz since we're in the US and it isn't legal to broadcast on other frequencies
         
         rfm9x.enable_crc = True # enable checksums to protect data against accidental tampering
-		# a CRC is not an encryption algorithm.
+	# a CRC is not an encryption algorithm.
         
         print("configuring radio for %.1f MHz, %d dBm tx power" % (center_freq, rfm9x.tx_power))
         while True:
