@@ -4,7 +4,7 @@
 
 # sudo apt-get update && sudo apt-get upgrade
 # sudo pip3 install --upgrade setuptools
-# add the line "dtoverlay=spi1-3cs" to the bottom of /boot/config.txt
+# add the line 'dtoverlay=spi1-3cs' to the bottom of /boot/config.txt
 # pip3 install RPI.GPIO
 # pip3 install adafruit-blinka
 # sudo pip3 install adafruit-circuitpython-rfm9x
@@ -31,39 +31,55 @@ import sys
 import signal
 import time
 
+import datetime # for timestamps
+
+import logging # for writing to a log file for debugging
+
 packetlen = 36
-packettime = 0.5 # time in between packets in minutes
+packettime = 2.0 / 60.0 # time in between packets in minutes
 
 packettotal = 0 # packets understood
 
 center_freq = 915.0
 
+logname = './logfile_LoRa.txt'
+
 def signal_handler(sig, frame):
-    """traps cntl-c to print out the number of received and understood packets"""
+    '''traps cntl-c to print out the number of received and understood packets'''
     
     global packettotal
-    print("\ngot %d packets." % (packettotal)) 
+    logging.info('caught cntl-c, exiting now.')
+    print('\ngot %d packets.' % (packettotal)) 
     sys.exit(0)
 
-def parsepacket(pack):
-    """takes in a packet from the LoRa hardware and parses it, returning a formatted tuple with a variety of parameters"""
+def printpacket(pack):
+    '''takes in a packet from the LoRa hardware and parses it, returning a formatted tuple with a variety of parameters'''
+    if pack is None:
+        return False
 
     # error checking to make sure that the packet is well-formed
     if len(pack) != packetlen:
-        print("WARNING - packet is not of proper length, dropping it.")
+        print('WARNING - packet is not of proper length, dropping it.')
         
-        return None
+        return False
     
     dataformat = namedtuple('dataformat', 'NodeID tempC pressPa hum CO2 tVOC count packetcount deviceinfo')
 	
     packetformat = '<IfffffHxxII' # this is the format of a packet written in a format that struct can understand.
 	
-    formatteddata = dataformat._make(struct.unpack(packetformat, pack))
+    data = dataformat._make(struct.unpack(packetformat, pack))
     
-    return formatteddata
+    global packettotal
+    cpm = data.count / packettime
+    print(datetime.datetime.now().strftime('%d/%m/%y %I:%M:%S') + '    ', end='')
+    print('host packet %d (client packet %d):    %4.2f C, %4.2f Pa, %4.2f percent hum, %4.2f ppm CO2, %4.2f ppb tVOC, %4.2f cpm' % (packettotal, data.packetcount, data.tempC, data.pressPa, data.hum, data.CO2, data.tVOC, cpm))
+
+    return True
 
 if __name__ == '__main__':
-
+    print('starting LoRa script...')
+    logging.basicConfig(filename=logname, format='%(asctime)s %(levelname)s: %(message)s', datefmt='%d/%m/%y %I:%M:%S', level=logging.INFO)
+    logging.info('starting LoRa script...')
     signal.signal(signal.SIGINT, signal_handler)
 
     CS = DigitalInOut(board.CE1)
@@ -74,19 +90,28 @@ if __name__ == '__main__':
         rfm9x = adafruit_rfm9x.RFM9x(spi, CS, RESET, center_freq) # use 915MHz since we're in the US and it isn't legal to broadcast on other frequencies
         
         rfm9x.enable_crc = True # enable checksums to protect data against accidental tampering
-	# a CRC is not an encryption algorithm.
+        # a CRC is not an encryption algorithm.
         
-        print("configuring radio for %.1f MHz, %d dBm tx power" % (center_freq, rfm9x.tx_power))
+        print('configured radio for %.1f MHz, %d dBm tx power' % (center_freq, rfm9x.tx_power))
+
+        num_dropped_packets = 0
+        measuring_dropped_packets = False
+
         while True:
-            packet = rfm9x.receive()
-            if packet is not None:
-                data = parsepacket(packet)
-                if data is not None:
-                    cpm = data.count / packettime
-                    print("host packet %d (client packet %d):    %4.2f C, %4.2f Pa, %4.2f percent hum, %4.2f ppm CO2, %4.2f ppb tVOC, %4.2f cpm" % (packettotal, data.packetcount, data.tempC, data.pressPa, data.hum, data.CO2, data.tVOC, cpm))
-                    packettotal += 1
-                else:
-                    print("packet is damaged.")
+            success = printpacket(rfm9x.receive(timeout = (packettime * 60) + 1))
+            if not success:
+                if not measuring_dropped_packets:
+                    measuring_dropped_packets = True
+                    logging.warning('detected a dropped packet, checking for more...')
+                num_dropped_packets += 1
+            else:
+                packettotal += 1
+                if measuring_dropped_packets:
+                    logging.warning('detected a total of ' + str(num_dropped_packets) + ' dropped packets.')
+                    measuring_dropped_packets = False
+                    num_dropped_packets = 0
+
     except RuntimeError as error:
+        logging.critical('failed to initialize the LoRa module!')
         print('RFM9X initialization error: ', error)
 
