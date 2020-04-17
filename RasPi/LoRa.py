@@ -34,6 +34,7 @@ import time
 import datetime # for timestamps
 
 import logging # for writing to a log file for debugging
+import argparse
 
 packetlen = 36
 packettime = 2.0 / 60.0 # time in between packets in minutes
@@ -71,14 +72,18 @@ def printpacket(pack):
     
     global packettotal
     cpm = data.count / packettime
-    print(datetime.datetime.now().strftime('%d/%m/%y %I:%M:%S') + '    ', end='')
+    print(datetime.datetime.now().strftime('%m/%d/%y %I:%M:%S %p') + '    ', end='')
     print('host packet %d (client packet %d):    %4.2f C, %4.2f Pa, %4.2f percent hum, %4.2f ppm CO2, %4.2f ppb tVOC, %4.2f cpm' % (packettotal, data.packetcount, data.tempC, data.pressPa, data.hum, data.CO2, data.tVOC, cpm))
 
     return True
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='a LoRa listening script.')
+    parser.add_argument('--logpath', type=str, default='.', help='path to file used to log errors and dropped packets')
+    args = parser.parse_args()
+    
     print('starting LoRa script...')
-    logging.basicConfig(filename=logname, format='%(asctime)s %(levelname)s: %(message)s', datefmt='%d/%m/%y %I:%M:%S', level=logging.INFO)
+    logging.basicConfig(filename=args.logpath + '/logfile_LoRa.txt', format='%(asctime)s %(levelname)s: %(message)s', datefmt='%m/%d/%y %I:%M:%S %p', level=logging.INFO)
     logging.info('starting LoRa script...')
     signal.signal(signal.SIGINT, signal_handler)
 
@@ -107,7 +112,7 @@ if __name__ == '__main__':
             else:
                 packettotal += 1
                 if measuring_dropped_packets:
-                    logging.warning('detected a total of ' + str(num_dropped_packets) + ' dropped packets.')
+                    logging.warning('estimating a total of ' + str(num_dropped_packets) + ' dropped packets.')
                     measuring_dropped_packets = False
                     num_dropped_packets = 0
 

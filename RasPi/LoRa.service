@@ -1,0 +1,10 @@
+[Unit]
+Description=a LoRa packet listener that pushes packets to AWS
+After=network.target
+
+[Service]
+ExecStart=/home/pi/Desktop/Weather-Station/RasPi/LoRa.py --logpath /home/pi/Desktop/Weather-Station/RasPi
+Type=simple
+
+[Install]
+WantedBy=default.target
