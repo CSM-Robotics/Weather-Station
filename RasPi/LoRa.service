@@ -1,9 +1,10 @@
 [Unit]
 Description=a LoRa packet listener that pushes packets to AWS
-After=network.target
+After=local-fs.target
 
 [Service]
-ExecStart=/home/pi/Desktop/Weather-Station/RasPi/LoRa.py --logpath /home/pi/Desktop/Weather-Station/RasPi
+ExecStartPre=/bin/bash -c 'until host example.com; do sleep 1; done' # busy wait until DNS comes up
+ExecStart=/home/pi/Desktop/Weather-Station/RasPi/LoRa.py --logpath /var/log/
 Type=simple
 
 [Install]
