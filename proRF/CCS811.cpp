@@ -6,7 +6,7 @@ bool CCS::startSensor() {
   pinMode(wake_pin, OUTPUT);
   digitalWrite(wake_pin, 0); // start awake
   delay(1);
-  bool err = sensor.begin() != CCS811Core::SENSOR_SUCCESS;
+  bool err = !sensor.begin();
   digitalWrite(wake_pin, 1);
   delay(1);
   return err;

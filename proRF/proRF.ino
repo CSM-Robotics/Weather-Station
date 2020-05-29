@@ -17,7 +17,8 @@ This is the main sketch for the Arduino side of the Weather Station project. It 
 
 #include <RH_RF95.h> // radiohead lib for LoRa communications
 
-const unsigned int packet_delay = 2; // delay between packets in seconds
+const unsigned int packet_delay = 120; // delay between packets in seconds - currently two minutes
+const unsigned int dbg_packet_delay = 2;
 
 const unsigned char BMEADDR = 0x77;
 const unsigned char CCSADDR = 0x5B;
@@ -60,10 +61,15 @@ struct weatherpacket { // device info is to tell the RasPi about the health of t
 
 weatherpacket pack = { 1 }; // set node ID to be 1 (each node ID is unique)
 
+// if DEBUG_MODE is defined, the system will not boot up without being connected to a USB port (to avoid missing anything coming over the Serial port)
+// and will emit packets every 2 seconds.
+#define DEBUG_MODE false
+
 void setup() {
   SerialUSB.begin(9600);
-  while (!SerialUSB);
-  // don't wait for Serial lib to show up in final product, because this will hang the board if a USB cable isn't plugged in.
+  if (DEBUG_MODE) {
+    while (!SerialUSB);
+  }
 
   pinMode(LED_BUILTIN, OUTPUT);
   digitalWrite(LED_BUILTIN, LOW);
@@ -128,13 +134,12 @@ void setup() {
   } else {
     SerialUSB.println("done.");
   }
-  rf95.setFrequency(915.0);
   
+  rf95.setFrequency(915.0);
   rf95.setTxPower(23); // set max TX power
 }
 
-void loop() {
-  
+void loop() {  
   bool errread;
   
   errread = atmosphere.readSensor(&pack.tempC, &pack.pressPa, &pack.hum);
@@ -193,7 +198,12 @@ void loop() {
   rf95.waitPacketSent();
 
   rf95.sleep(); // turn the radio off for a while
-  delay(packet_delay * 1000);
+  if (DEBUG_MODE) {
+    delay(dbg_packet_delay * 1000);
+  } else {
+    delay(packet_delay * 1000);
+  }
   pack.deviceinfo = 0; // clear errors picked up for this packet
   // NOTE: the default arduino low power lib is broken, probably the fault of RTCZero?
+  // also can't use WDT lib. :/
 }
