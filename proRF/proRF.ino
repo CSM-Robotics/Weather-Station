@@ -16,6 +16,7 @@ This is the main sketch for the Arduino side of the Weather Station project. It 
 #include "Geiger.h"
 
 #include <RH_RF95.h> // radiohead lib for LoRa communications
+#include <RHReliableDatagram.h>
 
 const unsigned int packet_delay = 120; // delay between packets in seconds - currently two minutes
 const unsigned int dbg_packet_delay = 2;
@@ -23,29 +24,17 @@ const unsigned int dbg_packet_delay = 2;
 const unsigned char BMEADDR = 0x77;
 const unsigned char CCSADDR = 0x5B;
 
+const int ARDUINO_ADDRESS = 2;
+const int RASPI_ADDRESS = 1;
+
 RH_RF95 rf95(12,6);
+RHReliableDatagram manager(rf95, ARDUINO_ADDRESS);
 
 BME atmosphere(BMEADDR);
 CCS airquality(CCSADDR);
 Geiger rad; // geiger sensor is not connected over I2C, so no address is required
 
 uint32_t packetcounter = 0;
-
-enum {
-  //BME_ERROR_BIT = 0, // not implemented - board has no way to detect measurement errors
-  CCS_ERROR_MESSAGE_INVALID, // problem on the arduino side - sending invalid i2c commands
-  CCS_ERROR_READ_REGISTER_INVALID, // problem on the arduino side - sending invalid i2c commands
-  CCS_ERROR_MEASUREMENT_INVALID, // problem on the arduino side - sending invalid i2c commands
-  CCS_ERROR_MAX_RESISTANCE, // either the heater isn't operating, the environment is "unusual", or the sensor is damaged.
-  CCS_ERROR_HEATER_FAULT, // likely a PCB issue
-  CCS_ERROR_HEATER_SUPPLY, // also likely a PCB issue
-  CCS_ERROR_COMMUNICATION,
-  //GEIGER_ERROR_BIT, // not implemented - board has no way to detect measurement errors
-  RADIO_ERROR_BIT, // not implemented yet
-  BATTERY_ERROR_BIT, // not implemented yet
-  SOLAR_PANEL_ERROR_BIT, // not implemented yet
-  CHARGING_STATUS_ERROR_BIT // not implemented yet
-};
 
 struct weatherpacket { // device info is to tell the RasPi about the health of the device (1 if error, 0 if no error)
   const uint32_t nodeID;
@@ -115,7 +104,7 @@ void setup() {
   }
   
   SerialUSB.print("Initializing RFM95W... ");
-  if (!rf95.init()) {
+  if (!manager.init()) {
     SerialUSB.println("Error initializing the radio, blinking pattern");
     while(true) {
       digitalWrite(LED_BUILTIN, HIGH);
@@ -142,16 +131,10 @@ void setup() {
 void loop() {  
   bool errread;
   
-  errread = atmosphere.readSensor(&pack.tempC, &pack.pressPa, &pack.hum);
-  if (errread) {
-    SerialUSB.println("Error reading the atmospheric sensor!");
-  }
+  atmosphere.readSensor(&pack.tempC, &pack.pressPa, &pack.hum); // BME sensor does not report errors.
 
   float alt;
-  errread = atmosphere.readAlt(&alt);
-  if (errread) {
-    SerialUSB.println("Error reading the atmospheric sensor!");
-  }
+  atmosphere.readAlt(&alt);
 
   // NOTE: the CCS811 sensor requires 20 mins of uptime to generate useful data.
   errread = airquality.readSensor(&pack.CO2ppm, &pack.tVOCppb);
@@ -163,7 +146,7 @@ void loop() {
   // use BME data to calibrate the CCS sensor.
   bool errset = airquality.setInfo(pack.hum, pack.tempC);
   if (errset) {
-    pack.deviceinfo |= airquality.getError();
+    pack.deviceinfo |= (airquality.getError() << 8);
     SerialUSB.println("Error setting air quality data!");
   }
   
@@ -194,9 +177,8 @@ void loop() {
   SerialUSB.print(pack.deviceinfo, BIN);
   SerialUSB.println();
   
-  rf95.send(reinterpret_cast<uint8_t*>(&pack), sizeof(pack));
-  rf95.waitPacketSent();
-
+  manager.sendtoWait(reinterpret_cast<uint8_t*>(&pack), sizeof(pack), RASPI_ADDRESS);
+  
   rf95.sleep(); // turn the radio off for a while
   if (DEBUG_MODE) {
     delay(dbg_packet_delay * 1000);
